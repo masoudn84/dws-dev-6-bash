@@ -1,0 +1,69 @@
+#!/bin/bash
+#Author:M.Nikoukam
+##This script can run your COMMAND and if it got in stuck this script can 
+##retry with your TRY_INTERVAL until it successful run.
+## TO SEE USAGE TYPE "-h".
+
+#collect all variables to list_array
+list_array=($*)
+
+
+for i in "${list_array[@]}";do
+    #check the "-i or -n" parameter is defined or script must use environment 
+    #variable;if the env variable is not define neighter;it use default value 
+    if [[ ${list_array[0]} != "-i" || ${list_array[2]} != "-i" ]];then
+        TRY_INTERVAL=${TRY_INTERVAL:-5}
+    fi
+    if [[ ${list_array[0]} != "-n" || ${list_array[2]} != "-n" ]];then
+        TRY_NUMBER=${TRY_NUMBER:-12}
+    fi
+    #set position of parameters and assign arguments to parameters if most of them is assigned 
+    if [ ${list_array[0]} == "-i" ];then
+        TRY_INTERVAL=${list_array[1]}
+        if [ ${list_array[2]} == "-n" ];then
+          TRY_NUMBER=${list_array[3]}
+          TRY_COMMAND=${list_array[@]:4}
+        else
+          TRY_COMMAND=${list_array[@]:2}
+        fi
+    elif [ ${list_array[0]} == "-n" ];then
+        TRY_NUMBER=${list_array[1]}
+        if [ ${list_array[2]} == "-i" ];then
+          TRY_INTERVAL=${list_array[3]}
+          TRY_COMMAND=${list_array[@]:4}
+        else
+          TRY_COMMAND=${list_array[@]:2}
+        fi
+    #check help
+    elif [ ${list_array[0]} == "-h" ];then
+        echo "USAGE: try -i TRY_INTERVAL(s) -n TRY_NUMBER COMMAND"
+    #run TRY_COMMAND without parameters
+    else
+        TRY_COMMAND=${list_array[@]}  
+    fi    
+done
+#user must give a TRY_COMMAND  
+if [[ $TRY_COMMAND == "" ]];then
+    echo "You dont enter any COMMAND;Enter -h for help!"
+    exit 1
+fi
+#execute TRY_COMMAND and when it fails it run with TRY_INTERVAL and try-count until 
+#success or exit with error message. 
+while [ $TRY_NUMBER != 0 ];do  
+  ($TRY_COMMAND)
+  if [ $? == 0 ];then
+    exit 0
+  else 
+    while [[ $TRY_NUMBER != 0 ]];do 
+      ($TRY_COMMAND)
+      if [[ $? == 0 ]];then  
+        exit 0
+      else
+        TRY_NUMBER=$(($TRY_NUMBER-1))
+        sleep $TRY_INTERVAL
+      fi
+    done
+  fi
+done
+echo "your times up" 2> /dev/stderr |tee
+exit 1
